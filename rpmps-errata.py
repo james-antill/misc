@@ -481,8 +481,8 @@ def rpmps_from_container(image, fname):
               "' | sudo docker run -i '" + image + "' bash > '" +
               fname + "'.rpmps")
 def rpmps_from_localhost(fname="localhost"):
-    os.system(rpmps_cmds() +
-              " > '" +
+    os.system("( " + rpmps_cmds() +
+              " ) > '" +
               fname + "'.rpmps")
 
 def update2pkg(pkg, pkgtup, update):
