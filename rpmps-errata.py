@@ -28,6 +28,11 @@ def _ui_lnum(num):
         _used_locale = True
     return locale.format("%d", int(num), True)
 
+def _ui_num_s(num, sec):
+    val = num / sec
+    if val <= 10:
+        return ("%7.7f" % (float(num) / sec))[:7]
+    return _ui_num(val)
 def _ui_num(num):
     num = int(num)
     if num < 1000:
@@ -168,7 +173,7 @@ class Prog:
         left = 79 - (len(self.prefix) + mnum + 3 + mnum + 1)
         text = shorten_text(text, left)
         secs = self._last_tm - self._tm_beg
-        print '%s%*s/s %*s %-*s\r' % (self.prefix, mnum, _ui_num(num / secs),
+        print '%s%*s/s %*s %-*s\r' % (self.prefix, mnum, _ui_num_s(num, secs),
                                       mnum, _ui_num(num), left, text),
         sys.stdout.flush()
 
@@ -177,7 +182,7 @@ class Prog:
             return
         text = self.output_func(val)
 
-        ui_tot = _ui_num(self.total)
+        ui_tot = _ui_num(num) # self.total)
         mnum = len(ui_tot)
         left = 79 - (len(self.prefix) + mnum + 3 + mnum + 1 + 3 + 2 + 18 + 1)
         text = shorten_text(text, left)
@@ -187,7 +192,7 @@ class Prog:
         secs = self._last_tm - self._tm_beg
 
         print '%s%*s/s %*s %3u%% %s %-*s\r' % (self.prefix,
-                                               mnum, _ui_num(num / secs), mnum,
+                                               mnum, _ui_num_s(num, secs), mnum,
                                                ui_tot, perc,
                                                textperc, left, text),
         sys.stdout.flush()
