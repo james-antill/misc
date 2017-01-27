@@ -339,10 +339,14 @@ def getCacheDir(tmpdir='/var/tmp', reuse=True, prefix='dumpsterfire-'):
     cachedir = tempfile.mkdtemp(prefix=prefix, dir=tmpdir)
     return cachedir
 
+_DEF_EXPIRATION_TIME = 2*24*60*60
 import time
-def _within_cache(myfile, expiration_time=60*60*48):
+def _within_cache(myfile, expiration_time=None):
     if not os.path.exists(myfile):
         return False
+
+    if expiration_time is None:
+        expiration_time = _DEF_EXPIRATION_TIME
 
     val = False
     cookie_info = os.stat(myfile)
@@ -421,6 +425,8 @@ def parse_args():
                             help="Process the specified rows")
         parser.add_argument("--release", dest="rel", default=None,
                             help="Process the specified release only")
+    parser.add_argument("--cache-timeout", default=None,
+                        help="Set cache timeout.")
     parser.add_argument("cmds", default=None, nargs='*',
                         help="Args.")
 
@@ -498,10 +504,33 @@ def stats_prnt(fd):
     print '         Bugs: %s unapplied, %s issued' % (_ui_num(fd['bugs']), _ui_num(fd['Tbugs']))
     print 'Security Bugs: %s unapplied, %s issued' % (_ui_num(fd['sec']),  _ui_num(fd['Tsec']))
 
+_DEF_IGNORE_STATUS = ('obsolete', 'pending', 'unpushed') # testing?
+
 import pprint
 import sys
 def main():
     opts = parse_args()
+
+    if opts.cache_timeout is not None:
+        ct = opts.cache_timeout
+        multi = 1
+        if False: pass
+        elif ct.endswith("s"):
+            ct = ct[:-1]
+        elif ct.endswith("m"):
+            ct = ct[:-1]
+            multi = 60
+        elif ct.endswith("h"):
+            ct = ct[:-1]
+            multi = 60*60
+        elif ct.endswith("d"):
+            ct = ct[:-1]
+            multi = 24*60*60
+        elif ct.endswith("w"):
+            ct = ct[:-1]
+            multi = 7*24*60*60
+        global _DEF_EXPIRATION_TIME
+        _DEF_EXPIRATION_TIME = int(ct) * multi
 
     log.info("Starting fedmsg-errata")
 
