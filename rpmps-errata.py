@@ -362,14 +362,35 @@ def _within_cache(myfile, expiration_time=None):
 
 import pickle
 _bd_cachedir = getCacheDir()
+def _cache_save_ids(data):
+    dname = _bd_cachedir + '/' + ".id"
+    for update in data['updates']:
+        fname = dname + '/' + update['updateid']
+        pickle.dump(update, open(fname + '.tmp', 'w'))
+        os.rename(fname + '.tmp', fname)
+
+def _cached_bd_id(bd, bdid, cache=True):
+    dname = _bd_cachedir + '/' + ".id"
+    fname = dname + '/' + bdid
+    if cache and _within_cache(fname):
+        return { 'updates' : [pickle.load(open(fname))] }
+    kwargs = {}
+    kwargs['updateid'] = bdid
+    data = bd.send_request('updates/', verb='GET', params=kwargs)
+    if not os.path.exists(dname):
+        os.makedirs(dname)
+    _cache_save_ids(data)
+    return data
+
 def _cached_bd_query(bd, package, release, cache=True):
     dname = _bd_cachedir + '/' + release
     fname = dname + '/' + package
     if cache and _within_cache(fname):
         return pickle.load(open(fname))
-    data = bd.query(package=package, release=release)
+    data = bd.query(package=package, release=release, timeout=30)
     if not os.path.exists(dname):
         os.makedirs(dname)
+    _cache_save_ids(data)
     pickle.dump(data, open(fname + '.tmp', 'w'))
     os.rename(fname + '.tmp', fname)
     return data
@@ -624,9 +645,7 @@ def main():
         # No caching ... do we care?
         bd = bodhi.Bodhi2Client()
         for cmd in opts.cmds[1:]:
-            kwargs = {}
-            kwargs['updateid'] = cmd
-            data = bd.send_request('updates/', verb='GET', params=kwargs)
+            data = _cached_bd_id(bd, cmd)
             for update in data['updates']:
                 update['comments'] = []
                 print bd.update_str(update).encode("UTF-8")
