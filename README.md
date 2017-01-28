@@ -2,3 +2,9 @@
 
  * jenk.py - Jenkins command line client, does simple status stuff all the way upto full html reports on pagure pull requests.
  * rpmps-errata.py - Errata queries that can be done on a simple representation of a system/container/whatever. Fedora only atm as it uses bodhi for the errata data, with caching. rpm data is got via. running a shell script for rpm/coreutils on the image. Fedmsg was tried, but didn't work well.
+    * ./rpmps-errata.py image fedora:25
+    * ./rpmps-errata.py list security fedora:25.rpmps
+    * ./rpmps-errata.py stats fedora:25.rpmps
+    * ./rpmps-errata.py localhost
+    * ./rpmps-errata.py cache uncomment
+    * ./rpmps-errata.py list localhost.rpmps
