@@ -398,19 +398,23 @@ def _cached_bd_query(bd, package, release, cache=True):
 def _bd_recheck(bd, cache=False):
     cachedir = _bd_cachedir + '/'
     if cache:
-        prog = Prog("Refresh:", 0)
+        prog = Prog("Refresh: ", 0)
     else:
-        prog = Prog("Recheck:", 0)
+        prog = Prog("Recheck: ", 0)
     fnames = []
     for release in os.listdir(cachedir):
+        try:
+            int(release)
+        except:
+            continue
         for package in os.listdir(cachedir + '/' + release):
             fnames.append((package, release))
             prog.progress_up(len(fnames), release + '/' + package)
     prog.end()
     if cache:
-        prog = Prog("Refresh:", len(fnames))
+        prog = Prog("Refresh: ", len(fnames))
     else:
-        prog = Prog("Recheck:", len(fnames))
+        prog = Prog("Recheck: ", len(fnames))
     num = 0
     for package, release in fnames:
         num += 1
@@ -493,10 +497,12 @@ def update2pkg(pkg, pkgtup, update):
 def prnt_update(up, pkgtup, update):
     n, e, v, r = pkgtup
 
-    if update['status'] == 'testing':
+    if False and update['status'] == 'testing':
         print ' *  Test:', update['alias']
-    else:
+    elif update['status'] == 'stable':
         print ' *  ID  :', update['alias']
+    else:
+        print ' *  ID  :', update['alias'], '(', update['status'], ')'
     if update['type'] == 'security':
         print '    Type:', '*'*8, update['type'], '*'*8
     else:
@@ -581,16 +587,17 @@ def main():
                 print "Can't use file '%s', as only fedora dist. supported (was: %s)" % (cmd, dist)
                 continue
             fd = stats_init()
-            prog = Prog("Pkgs:", len(pkgs))
+            prog = Prog("Pkgs: ", len(pkgs))
             num = 0
             for pkg, n, e, v, r in pkgs:
-                num += 1
                 prog.progress(num, pkg)
                 data = _cached_bd_query(bd, package=n, release=rel)
+                num += 1
+                prog.progress(num, pkg)
                 pkgtup = n, e, v, r
                 for update in data['updates']:
-                    if update['status'] == 'obsolete': # Included testing?
-                        continue
+                    if update['status'] in _DEF_IGNORE_STATUS:
+                        continue # Included testing?
                     stats_update(fd, update, 'T')
                     stats_update(td, update, 'T')
                     if update2pkg(pkg, pkgtup, update) is None:
@@ -616,7 +623,7 @@ def main():
                 print "Can't use file '%s', as only fedora dist. supported (was: %s)" % (cmd, dist)
                 continue
             datas = {}
-            prog = Prog("Pkgs:", len(pkgs))
+            prog = Prog("Pkgs: ", len(pkgs))
             num = 0
             for pkg, n, e, v, r in pkgs:
                 num += 1
@@ -628,9 +635,11 @@ def main():
                 done = False
                 pkgtup = n, e, v, r
                 for update in data['updates']:
-                    if update['status'] == 'obsolete': # Included testing?
+                    if update['status'] in _DEF_IGNORE_STATUS:
                         continue
                     if T != 'all' and update['type'] == 'enhancement':
+                        continue
+                    if T != 'all' and update['type'] == 'testing':
                         continue
                     if update['type'] != 'security' and T == 'security':
                         continue
