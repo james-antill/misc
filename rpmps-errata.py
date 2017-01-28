@@ -362,12 +362,20 @@ def _within_cache(myfile, expiration_time=None):
 
 import pickle
 _bd_cachedir = getCacheDir()
+def _cache_uncomment(data):
+    for update in data['updates']:
+        update['comments'] = []
+
 def _cache_save_ids(data):
     dname = _bd_cachedir + '/' + ".id"
     for update in data['updates']:
         fname = dname + '/' + update['updateid']
         pickle.dump(update, open(fname + '.tmp', 'w'))
         os.rename(fname + '.tmp', fname)
+
+def _cache_save_pkg(fname, data):
+    pickle.dump(data, open(fname + '.tmp', 'w'))
+    os.rename(fname + '.tmp', fname)
 
 def _cached_bd_id(bd, bdid, cache=True):
     dname = _bd_cachedir + '/' + ".id"
@@ -382,17 +390,20 @@ def _cached_bd_id(bd, bdid, cache=True):
     _cache_save_ids(data)
     return data
 
-def _cached_bd_query(bd, package, release, cache=True):
+def _cached_pkg2fname(package, release):
     dname = _bd_cachedir + '/' + release
     fname = dname + '/' + package
+    return dname, fname
+
+def _cached_bd_query(bd, package, release, cache=True):
+    dname, fname = _cached_pkg2fname(package, release)
     if cache and _within_cache(fname):
         return pickle.load(open(fname))
     data = bd.query(package=package, release=release, timeout=30)
     if not os.path.exists(dname):
         os.makedirs(dname)
     _cache_save_ids(data)
-    pickle.dump(data, open(fname + '.tmp', 'w'))
-    os.rename(fname + '.tmp', fname)
+    _cache_save_pkg(fname, data)
     return data
 
 def _bd_recheck(bd, cache=False):
@@ -420,6 +431,31 @@ def _bd_recheck(bd, cache=False):
         num += 1
         prog.progress(num, release + '/' + package)
         _cached_bd_query(bd, package, release, cache=cache)
+    prog.end()
+
+def _bd_uncomment():
+    cachedir = _bd_cachedir + '/'
+    prog = Prog("Uncomment: ", 0)
+    fnames = []
+    for release in os.listdir(cachedir):
+        try:
+            int(release)
+        except:
+            continue
+        for package in os.listdir(cachedir + '/' + release):
+            fnames.append((package, release))
+            prog.progress_up(len(fnames), release + '/' + package)
+    prog.end()
+    prog = Prog("Uncomment: ", len(fnames))
+    num = 0
+    for package, release in fnames:
+        num += 1
+        prog.progress(num, release + '/' + package)
+        dname, fname = _cached_pkg2fname(package, release)
+        data = pickle.load(open(fname))
+        _cache_uncomment(data)
+        _cache_save_ids(data)
+        _cache_save_pkg(fname, data)
     prog.end()
 
 def _bd_clean():
@@ -590,14 +626,13 @@ def main():
             prog = Prog("Pkgs: ", len(pkgs))
             num = 0
             for pkg, n, e, v, r in pkgs:
-                prog.progress(num, pkg)
-                data = _cached_bd_query(bd, package=n, release=rel)
                 num += 1
                 prog.progress(num, pkg)
+                data = _cached_bd_query(bd, package=n, release=rel)
                 pkgtup = n, e, v, r
                 for update in data['updates']:
                     if update['status'] in _DEF_IGNORE_STATUS:
-                        continue # Included testing?
+                        continue
                     stats_update(fd, update, 'T')
                     stats_update(td, update, 'T')
                     if update2pkg(pkg, pkgtup, update) is None:
@@ -639,7 +674,7 @@ def main():
                         continue
                     if T != 'all' and update['type'] == 'enhancement':
                         continue
-                    if T != 'all' and update['type'] == 'testing':
+                    if T != 'all' and update['status'] == 'testing':
                         continue
                     if update['type'] != 'security' and T == 'security':
                         continue
@@ -655,8 +690,8 @@ def main():
         bd = bodhi.Bodhi2Client()
         for cmd in opts.cmds[1:]:
             data = _cached_bd_id(bd, cmd)
+            _cache_uncomment(data)
             for update in data['updates']:
-                update['comments'] = []
                 print bd.update_str(update).encode("UTF-8")
 
     elif opts.cmds and opts.cmds[0] == 'cache':
@@ -672,6 +707,8 @@ def main():
         elif cmd == 'recheck':
             bd = bodhi.Bodhi2Client()
             _bd_recheck(bd)
+        elif cmd == 'uncomment':
+            _bd_uncomment()
         elif cmd == 'clean':
             _bd_clean()
         else:
