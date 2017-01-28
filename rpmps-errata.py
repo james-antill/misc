@@ -292,7 +292,7 @@ def _parse_rpmps(fname):
     dist = dist.rstrip()
     rel = fo.readline()
     rel = str(int(rel))
-    pkgs = []
+    pkgs = {} # Just latest of each name, Eg. kernel.
     for line in fo:
         pkg = line.rstrip()
         nevr = pkg.rsplit('.', 1)[0]
@@ -303,8 +303,9 @@ def _parse_rpmps(fname):
         else:
             e = '0'
             v = ev
-        pkgs.append((pkg, n, e, v, r))
-    return dist, rel, pkgs
+        if n not in pkgs or newer((e, v, r), pkgs[n][2:]):
+            pkgs[n] = (pkg, n, e, v, r)
+    return dist, rel, sorted(pkgs.values())
 
 import os
 import tempfile
