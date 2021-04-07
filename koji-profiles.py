@@ -3,10 +3,12 @@
 from __future__ import print_function
 
 import os
+import sys
 
 import koji
 
 interesting = set(('server', 'cert'))
+all_interesting = False
 def profiles(user_config=None):
     # /etc/koji.conf.d
     configs = ['/etc/koji.conf.d']
@@ -30,11 +32,14 @@ def profiles(user_config=None):
     m = {}
     for s in sorted(config.sections()):
         for name, value in config.items(s):
-            if name in interesting:
+            if all_interesting or name in interesting:
                 m[name] = value
         yield s, m
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        if sys.argv[1] == 'all':
+            all_interesting = True
     for s, m in profiles():
         print("[%s]" % s)
         for k in sorted(m):
