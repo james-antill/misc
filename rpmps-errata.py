@@ -438,10 +438,10 @@ def rpmps_cmds():
     return "cut -d: -f4 /etc/system-release-cpe; cut -d: -f5 /etc/system-release-cpe; rpm --nodigest --nosignature -qa --qf \"%{nevra}\n\" | sort"
 
 # This is disgusting, sorry.
-# Using import docker would make it a bit better. Allows querying images etc.
+# Using podman APIs would make it a bit better. Allows querying images etc.
 def rpmps_from_container(image, fname):
     os.system("echo '" + rpmps_cmds() +
-              "' | sudo docker run -i '" + image + "' bash > '" +
+              "' | sudo podman run -i '" + image + "' bash > '" +
               fname + "'.rpmps")
 def rpmps_from_localhost(fname="localhost"):
     os.system(rpmps_cmds() +
@@ -513,7 +513,7 @@ def main():
     elif opts.cmds and opts.cmds[0] == 'image':
         for cmd in opts.cmds[1:]:
             out = cmd.replace('/', '_')
-            print "Saving rpms from docker image %s to: %s.rpmps" % (cmd,out)
+            print "Saving rpms from podman image %s to: %s.rpmps" % (cmd,out)
             rpmps_from_container(cmd, out)
         sys.exit(0)
     elif opts.cmds and opts.cmds[0] in ('statistics', 'stats'):
